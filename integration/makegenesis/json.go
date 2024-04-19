@@ -1,15 +1,24 @@
-package makefakegenesis
+package makegenesis
 
 import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/Fantom-foundation/go-opera/integration/makegenesis"
+	"math/big"
+	"os"
+
+	"github.com/Fantom-foundation/go-opera/inter"
 	"github.com/Fantom-foundation/go-opera/inter/drivertype"
 	"github.com/Fantom-foundation/go-opera/inter/iblockproc"
 	"github.com/Fantom-foundation/go-opera/inter/ier"
 	"github.com/Fantom-foundation/go-opera/opera"
+	"github.com/Fantom-foundation/go-opera/opera/contracts/driver"
+	"github.com/Fantom-foundation/go-opera/opera/contracts/driverauth"
+	"github.com/Fantom-foundation/go-opera/opera/contracts/evmwriter"
+	"github.com/Fantom-foundation/go-opera/opera/contracts/netinit"
+	"github.com/Fantom-foundation/go-opera/opera/contracts/sfc"
+	"github.com/Fantom-foundation/go-opera/opera/contracts/sfclib"
 	"github.com/Fantom-foundation/go-opera/opera/genesis"
 	"github.com/Fantom-foundation/go-opera/opera/genesisstore"
 	"github.com/Fantom-foundation/lachesis-base/hash"
@@ -19,8 +28,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"math/big"
-	"os"
 )
 
 type GenesisJson struct {
@@ -30,13 +37,18 @@ type GenesisJson struct {
 }
 
 type NetworkRules struct {
+	InheritRules        string
 	NetworkName         string
 	NetworkID           hexutil.Uint64
-	MaxBlockGas         *uint64 `json:",omitempty"`
-	MaxEpochGas         *uint64 `json:",omitempty"`
-	MaxEventGas         *uint64 `json:",omitempty"`
-	LongGasAllocPerSec  *uint64 `json:",omitempty"`
-	ShortGasAllocPerSec *uint64 `json:",omitempty"`
+	DeployEssentials    bool
+	GenesisTime         *uint64         `json:",omitempty"`
+	MaxBlockGas         *uint64         `json:",omitempty"`
+	MaxEpochGas         *uint64         `json:",omitempty"`
+	MaxEventGas         *uint64         `json:",omitempty"`
+	LongGasAllocPerSec  *uint64         `json:",omitempty"`
+	ShortGasAllocPerSec *uint64         `json:",omitempty"`
+	Epoch               *uint64         `json:",omitempty"`
+	Upgrades            *opera.Upgrades `json:",omitempty"`
 }
 
 type Account struct {
@@ -66,8 +78,17 @@ func LoadGenesisJson(filename string) (*GenesisJson, error) {
 	return &decoded, nil
 }
 
+func jsonTxBuilder() func(calldata []byte, addr common.Address) *types.Transaction {
+	nonce := uint64(0)
+	return func(calldata []byte, addr common.Address) *types.Transaction {
+		tx := types.NewTransaction(nonce, addr, common.Big0, 1e10, common.Big0, calldata)
+		nonce++
+		return tx
+	}
+}
+
 func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
-	builder := makegenesis.NewGenesisBuilder()
+	builder := NewGenesisBuilder()
 
 	for _, acc := range json.Accounts {
 		if acc.Balance != nil {
@@ -83,7 +104,21 @@ func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
 		}
 	}
 
-	rules := opera.FakeNetRules()
+	rules := opera.MainNetRules()
+
+	if json.Rules.InheritRules != "" {
+		switch json.Rules.InheritRules {
+		case "mainnet":
+			rules = opera.MainNetRules()
+		case "testnet":
+			rules = opera.TestNetRules()
+		case "fakenet":
+			rules = opera.FakeNetRules()
+		default:
+			return nil, fmt.Errorf("unknown ruleset to inherit: %s", json.Rules.InheritRules)
+		}
+	}
+
 	rules.Name = json.Rules.NetworkName
 	rules.NetworkID = uint64(json.Rules.NetworkID)
 	if json.Rules.MaxBlockGas != nil {
@@ -102,12 +137,44 @@ func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
 		rules.Economy.LongGasPower.AllocPerSec = *json.Rules.LongGasAllocPerSec
 	}
 
+	if json.Rules.DeployEssentials {
+		// deploy essential contracts
+		// pre deploy NetworkInitializer
+		builder.SetCode(netinit.ContractAddress, netinit.GetContractBin())
+		// pre deploy NodeDriver
+		builder.SetCode(driver.ContractAddress, driver.GetContractBin())
+		// pre deploy NodeDriverAuth
+		builder.SetCode(driverauth.ContractAddress, driverauth.GetContractBin())
+		// pre deploy SFC
+		builder.SetCode(sfc.ContractAddress, sfc.GetContractBin())
+		// pre deploy SFCLib
+		builder.SetCode(sfclib.ContractAddress, sfclib.GetContractBin())
+		// set non-zero code for pre-compiled contracts
+		builder.SetCode(evmwriter.ContractAddress, []byte{0})
+	}
+
+	genesisTime := uint64(1)
+
+	if json.Rules.GenesisTime != nil {
+		genesisTime = *json.Rules.GenesisTime
+	}
+
+	epoch := 1
+
+	if json.Rules.Epoch != nil {
+		epoch = int(*json.Rules.Epoch)
+	}
+
+	if json.Rules.Upgrades != nil {
+		rules.Upgrades = *json.Rules.Upgrades
+	}
+
 	builder.SetCurrentEpoch(ier.LlrIdxFullEpochRecord{
 		LlrFullEpochRecord: ier.LlrFullEpochRecord{
 			BlockState: iblockproc.BlockState{
 				LastBlock: iblockproc.BlockCtx{
 					Idx:     0,
-					Time:    FakeGenesisTime,
+					Time:    inter.Timestamp(genesisTime),
 					Atropos: hash.Event{},
 				},
 				FinalizedStateRoot:    hash.Hash{},
@@ -120,9 +187,9 @@ func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
 				AdvanceEpochs:         0,
 			},
 			EpochState: iblockproc.EpochState{
-				Epoch:             1,
-				EpochStart:        FakeGenesisTime,
-				PrevEpochStart:    FakeGenesisTime - 1,
+				Epoch:             idx.Epoch(epoch),
+				EpochStart:        inter.Timestamp(genesisTime),
+				PrevEpochStart:    inter.Timestamp(genesisTime - 1),
 				EpochStateRoot:    hash.Zero,
 				Validators:        pos.NewBuilder().Build(),
 				ValidatorStates:   make([]iblockproc.ValidatorEpochState, 0),
@@ -133,8 +200,8 @@ func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
 		Idx: 1,
 	})
 
-	blockProc := makegenesis.DefaultBlockProc()
-	buildTx := txBuilder()
+	blockProc := DefaultBlockProc()
+	buildTx := jsonTxBuilder()
 	genesisTxs := make(types.Transactions, 0, len(json.Txs))
 	for _, tx := range json.Txs {
 		genesisTxs = append(genesisTxs, buildTx(tx.Data, tx.To))
