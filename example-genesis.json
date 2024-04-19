@@ -1,13 +1,22 @@
 {
-  "_": "This is a sample JSON genesis file. Opera can run a network defined by it when enabled by --jsongenesis parameter.",
+  "_": "This is a sample JSON genesis file. Opera can run a network defined by it when imported by `sonictool genesis json --experimental` parameter.",
   "rules": {
+    "inheritRules": "mainnet",
     "networkName": "sample-demonet",
     "networkId": "0x1234",
-    "MaxBlockGas": 20500000000,
-    "MaxEventGas": 10028000000,
-    "MaxEpochGas": 1500000000000,
-    "ShortGasAllocPerSec": 5600000000000,
-    "LongGasAllocPerSec": 2800000000000
+    "maxBlockGas": 20500000000,
+    "maxEventGas": 10028000000,
+    "maxEpochGas": 1500000000000,
+    "shortGasAllocPerSec": 5600000000000,
+    "longGasAllocPerSec": 2800000000000,
+    "deployEssentials": false,
+    "genesisTime": 1,
+    "epoch": 256,
+    "upgrades": {
+      "berlin": true,
+      "london": true,
+      "llr": true
+    }
   },
   "accounts": [
     {

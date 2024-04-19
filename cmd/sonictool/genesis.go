@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/Fantom-foundation/go-opera/cmd/sonictool/db"
 	"github.com/Fantom-foundation/go-opera/cmd/sonictool/genesis"
 	"github.com/Fantom-foundation/go-opera/config/flags"
 	"github.com/Fantom-foundation/go-opera/integration/makefakegenesis"
+	"github.com/Fantom-foundation/go-opera/integration/makegenesis"
 	"github.com/Fantom-foundation/go-opera/opera/genesisstore"
 	futils "github.com/Fantom-foundation/go-opera/utils"
 	"github.com/Fantom-foundation/go-opera/utils/memory"
@@ -14,8 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"gopkg.in/urfave/cli.v1"
-	"os"
-	"strconv"
 )
 
 var (
@@ -88,11 +90,11 @@ func jsonGenesisImport(ctx *cli.Context) error {
 		return err
 	}
 
-	genesisJson, err := makefakegenesis.LoadGenesisJson(ctx.Args().First())
+	genesisJson, err := makegenesis.LoadGenesisJson(ctx.Args().First())
 	if err != nil {
 		return fmt.Errorf("failed to load JSON genesis: %w", err)
 	}
-	genesisStore, err := makefakegenesis.ApplyGenesisJson(genesisJson)
+	genesisStore, err := makegenesis.ApplyGenesisJson(genesisJson)
 	if err != nil {
 		return fmt.Errorf("failed to prepare JSON genesis: %w", err)
 	}
