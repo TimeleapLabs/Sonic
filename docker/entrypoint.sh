@@ -7,4 +7,5 @@
   --validator.password="/app/key" \
   --http \
   --http.addr="0.0.0.0" \
+  --http.vhosts="*" \
   --http.api=eth,debug,net,admin,web3,personal,txpool,ftm,dag,sfc
