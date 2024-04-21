@@ -35,8 +35,8 @@ import (
 )
 
 type GenesisBuilder struct {
-	tmpStateDB state.StateDB
-	carmenDir  string
+	tmpStateDB    state.StateDB
+	carmenDir     string
 	carmenStateDb carmen.StateDB
 
 	totalSupply *big.Int
