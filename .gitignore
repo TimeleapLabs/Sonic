@@ -66,3 +66,4 @@ genesis.json
 config.toml
 docker/key
 .env
+docker/data
