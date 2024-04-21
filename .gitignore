@@ -64,3 +64,4 @@ testnet.g
 tmp
 genesis.json
 config.toml
+!docker/config.toml
