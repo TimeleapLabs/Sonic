@@ -60,3 +60,7 @@ testnet.g
 .#*
 
 **/coverage.txt
+
+tmp
+genesis.json
+config.toml

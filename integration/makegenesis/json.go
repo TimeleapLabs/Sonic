@@ -7,19 +7,25 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"time"
 
 	"github.com/Fantom-foundation/go-opera/inter"
 	"github.com/Fantom-foundation/go-opera/inter/drivertype"
 	"github.com/Fantom-foundation/go-opera/inter/iblockproc"
 	"github.com/Fantom-foundation/go-opera/inter/ier"
+	"github.com/Fantom-foundation/go-opera/inter/validatorpk"
 	"github.com/Fantom-foundation/go-opera/opera"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/driver"
+	"github.com/Fantom-foundation/go-opera/opera/contracts/driver/drivercall"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/driverauth"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/evmwriter"
+	nativeminter "github.com/Fantom-foundation/go-opera/opera/contracts/minter"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/netinit"
+	netinitcall "github.com/Fantom-foundation/go-opera/opera/contracts/netinit/netinitcalls"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/sfc"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/sfclib"
 	"github.com/Fantom-foundation/go-opera/opera/genesis"
+	"github.com/Fantom-foundation/go-opera/opera/genesis/gpos"
 	"github.com/Fantom-foundation/go-opera/opera/genesisstore"
 	"github.com/Fantom-foundation/lachesis-base/hash"
 	"github.com/Fantom-foundation/lachesis-base/inter/idx"
@@ -31,9 +37,23 @@ import (
 )
 
 type GenesisJson struct {
-	Rules    NetworkRules
-	Accounts []Account     `json:",omitempty"`
-	Txs      []Transaction `json:",omitempty"`
+	Rules              NetworkRules
+	NetworkInitializer NetworkInitializerParams `json:",omitempty"`
+	Accounts           []Account                `json:",omitempty"`
+	Validators         []Validator              `json:",omitempty"`
+	Txs                []Transaction            `json:",omitempty"`
+}
+
+type NetworkInitializerParams struct {
+	SealedEpoch      idx.Epoch
+	TotalSupply      *big.Int
+	SfcAddr          *common.Address
+	LibAddr          *common.Address
+	DriverAuthAddr   *common.Address
+	DriverAddr       *common.Address
+	EvmWriterAddr    *common.Address
+	NativeMinterAddr *common.Address
+	Owner            *common.Address
 }
 
 type NetworkRules struct {
@@ -57,6 +77,14 @@ type Account struct {
 	Balance *big.Int                    `json:",omitempty"`
 	Code    VariableLenCode             `json:",omitempty"`
 	Storage map[common.Hash]common.Hash `json:",omitempty"`
+}
+
+type Validator struct {
+	Name    string
+	Address common.Address
+	Balance *big.Int
+	Stake   *big.Int
+	PubKey  string
 }
 
 type Transaction struct {
@@ -104,6 +132,10 @@ func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
 		}
 	}
 
+	for _, acc := range json.Validators {
+		builder.AddBalance(acc.Address, acc.Balance)
+	}
+
 	rules := opera.MainNetRules()
 
 	if json.Rules.InheritRules != "" {
@@ -149,6 +181,8 @@ func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
 		builder.SetCode(sfc.ContractAddress, sfc.GetContractBin())
 		// pre deploy SFCLib
 		builder.SetCode(sfclib.ContractAddress, sfclib.GetContractBin())
+		// pre deploy NativeMinter
+		builder.SetCode(nativeminter.ContractAddress, nativeminter.GetContractBin())
 		// set non-zero code for pre-compiled contracts
 		builder.SetCode(evmwriter.ContractAddress, []byte{0})
 	}
@@ -203,9 +237,86 @@ func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
 	blockProc := DefaultBlockProc()
 	buildTx := jsonTxBuilder()
 	genesisTxs := make(types.Transactions, 0, len(json.Txs))
+
+	sfcAddr := sfc.ContractAddress
+	libAddr := sfclib.ContractAddress
+	driverAuthAddr := driverauth.ContractAddress
+	driverAddr := driver.ContractAddress
+	evmWriterAddr := evmwriter.ContractAddress
+	nativeMinterAddr := nativeminter.ContractAddress
+
+	if json.NetworkInitializer.SfcAddr != nil {
+		sfcAddr = *json.NetworkInitializer.SfcAddr
+	}
+
+	if json.NetworkInitializer.LibAddr != nil {
+		libAddr = *json.NetworkInitializer.LibAddr
+	}
+
+	if json.NetworkInitializer.DriverAuthAddr != nil {
+		driverAuthAddr = *json.NetworkInitializer.DriverAuthAddr
+	}
+
+	if json.NetworkInitializer.DriverAddr != nil {
+		driverAddr = *json.NetworkInitializer.DriverAddr
+	}
+
+	if json.NetworkInitializer.EvmWriterAddr != nil {
+		evmWriterAddr = *json.NetworkInitializer.EvmWriterAddr
+	}
+
+	if json.NetworkInitializer.NativeMinterAddr != nil {
+		nativeMinterAddr = *json.NetworkInitializer.NativeMinterAddr
+	}
+
+	if json.NetworkInitializer.SealedEpoch != 0 {
+		genesisTxs = append(genesisTxs, buildTx(netinitcall.InitializeAll(
+			json.NetworkInitializer.SealedEpoch,
+			json.NetworkInitializer.TotalSupply,
+			sfcAddr,
+			libAddr,
+			driverAuthAddr,
+			driverAddr,
+			evmWriterAddr,
+			*json.NetworkInitializer.Owner,
+			nativeMinterAddr,
+		), netinit.ContractAddress))
+	}
+
+	for index, validator := range json.Validators {
+		pk, err := validatorpk.FromString(validator.PubKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse validator public key; %v", err)
+		}
+		setValidatorParams := gpos.Validator{
+			ID:               idx.ValidatorID(index + 1),
+			Address:          validator.Address,
+			PubKey:           pk,
+			CreationTime:     inter.Timestamp(time.Now().Unix() * int64(time.Second)),
+			CreationEpoch:    0,
+			DeactivatedTime:  0,
+			DeactivatedEpoch: 0,
+			Status:           0,
+		}
+		genesisTxs = append(genesisTxs, buildTx(drivercall.SetGenesisValidator(setValidatorParams), driver.ContractAddress))
+		setDelegationParams := drivercall.Delegation{
+			Address:            validator.Address,
+			ValidatorID:        idx.ValidatorID(index + 1),
+			Stake:              validator.Stake,
+			LockedStake:        new(big.Int),
+			LockupFromEpoch:    0,
+			LockupEndTime:      0,
+			LockupDuration:     0,
+			EarlyUnlockPenalty: new(big.Int),
+			Rewards:            new(big.Int),
+		}
+		genesisTxs = append(genesisTxs, buildTx(drivercall.SetGenesisDelegation(setDelegationParams), driver.ContractAddress))
+	}
+
 	for _, tx := range json.Txs {
 		genesisTxs = append(genesisTxs, buildTx(tx.Data, tx.To))
 	}
+
 	err := builder.ExecuteGenesisTxs(blockProc, genesisTxs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute json genesis txs; %v", err)

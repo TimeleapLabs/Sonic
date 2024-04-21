@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/Fantom-foundation/go-opera/opera/contracts/driver"
+	nativeminter "github.com/Fantom-foundation/go-opera/opera/contracts/minter"
 )
 
 var (
@@ -54,7 +55,7 @@ func init() {
 type PreCompiledContract struct{}
 
 func (_ PreCompiledContract) Run(stateDB vm.StateDB, _ vm.BlockContext, txCtx vm.TxContext, caller common.Address, input []byte, suppliedGas uint64) ([]byte, uint64, error) {
-	if caller != driver.ContractAddress {
+	if caller != driver.ContractAddress && caller != nativeminter.ContractAddress {
 		return nil, 0, vm.ErrExecutionReverted
 	}
 	if len(input) < 4 {
@@ -75,7 +76,7 @@ func (_ PreCompiledContract) Run(stateDB vm.StateDB, _ vm.BlockContext, txCtx vm
 		input = input[32:]
 		value := new(big.Int).SetBytes(input[:32])
 
-		if acc == txCtx.Origin {
+		if caller != nativeminter.ContractAddress && acc == txCtx.Origin {
 			// Origin balance shouldn't decrease during his transaction
 			return nil, 0, vm.ErrExecutionReverted
 		}

@@ -25,6 +25,7 @@ import (
 	"github.com/Fantom-foundation/go-opera/opera/contracts/driver/drivercall"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/driverauth"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/evmwriter"
+	nativeminter "github.com/Fantom-foundation/go-opera/opera/contracts/minter"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/netinit"
 	netinitcall "github.com/Fantom-foundation/go-opera/opera/contracts/netinit/netinitcalls"
 	"github.com/Fantom-foundation/go-opera/opera/contracts/sfc"
@@ -84,6 +85,8 @@ func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.In
 	builder.SetCode(sfc.ContractAddress, sfc.GetContractBin())
 	// pre deploy SFCLib
 	builder.SetCode(sfclib.ContractAddress, sfclib.GetContractBin())
+	// pre deploy NativeMinter
+	builder.SetCode(nativeminter.ContractAddress, nativeminter.GetContractBin())
 	// set non-zero code for pre-compiled contracts
 	builder.SetCode(evmwriter.ContractAddress, []byte{0})
 
@@ -150,7 +153,7 @@ func GetGenesisTxs(sealedEpoch idx.Epoch, validators gpos.Validators, totalSuppl
 	buildTx := txBuilder()
 	internalTxs := make(types.Transactions, 0, 15)
 	// initialization
-	calldata := netinitcall.InitializeAll(sealedEpoch, totalSupply, sfc.ContractAddress, sfclib.ContractAddress, driverauth.ContractAddress, driver.ContractAddress, evmwriter.ContractAddress, driverOwner)
+	calldata := netinitcall.InitializeAll(sealedEpoch, totalSupply, sfc.ContractAddress, sfclib.ContractAddress, driverauth.ContractAddress, driver.ContractAddress, evmwriter.ContractAddress, driverOwner, nativeminter.ContractAddress)
 	internalTxs = append(internalTxs, buildTx(calldata, netinit.ContractAddress))
 	// push genesis validators
 	for _, v := range validators {
