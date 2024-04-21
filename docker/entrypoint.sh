@@ -1,6 +1,6 @@
 #!/bin/sh
 
-/app/sonicd --datadir /app/data \
+exec /app/sonicd --datadir /app/data \
   --config /app/config.toml \
   --validator.id="$SONIC_VALIDATOR_ID" \
   --validator.pubkey="$SONIC_PUBKEY" \
