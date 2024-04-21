@@ -65,3 +65,4 @@ tmp
 genesis.json
 config.toml
 docker/key
+.env
