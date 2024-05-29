@@ -36,7 +36,8 @@ import (
 )
 
 var (
-	FakeGenesisTime = inter.Timestamp(1608600000 * time.Second)
+	FakeGenesisTime     = inter.Timestamp(1608600000 * time.Second)
+	FakeGenesisMinStake = big.NewInt(1e18)
 )
 
 // FakeKey gets n-th fake private key.
@@ -127,7 +128,7 @@ func FakeGenesisStoreWithRulesAndStart(num idx.Validator, balance, stake *big.In
 	}
 
 	blockProc := makegenesis.DefaultBlockProc()
-	genesisTxs := GetGenesisTxs(epoch-2, validators, builder.TotalSupply(), delegations, owner)
+	genesisTxs := GetGenesisTxs(epoch-2, validators, builder.TotalSupply(), FakeGenesisMinStake, delegations, owner)
 	err := builder.ExecuteGenesisTxs(blockProc, genesisTxs)
 	if err != nil {
 		panic(err)
@@ -149,11 +150,11 @@ func txBuilder() func(calldata []byte, addr common.Address) *types.Transaction {
 	}
 }
 
-func GetGenesisTxs(sealedEpoch idx.Epoch, validators gpos.Validators, totalSupply *big.Int, delegations []drivercall.Delegation, driverOwner common.Address) types.Transactions {
+func GetGenesisTxs(sealedEpoch idx.Epoch, validators gpos.Validators, totalSupply *big.Int, minSelfStake *big.Int, delegations []drivercall.Delegation, driverOwner common.Address) types.Transactions {
 	buildTx := txBuilder()
 	internalTxs := make(types.Transactions, 0, 15)
 	// initialization
-	calldata := netinitcall.InitializeAll(sealedEpoch, totalSupply, sfc.ContractAddress, sfclib.ContractAddress, driverauth.ContractAddress, driver.ContractAddress, evmwriter.ContractAddress, driverOwner, nativeminter.ContractAddress)
+	calldata := netinitcall.InitializeAll(sealedEpoch, totalSupply, minSelfStake, sfc.ContractAddress, sfclib.ContractAddress, driverauth.ContractAddress, driver.ContractAddress, evmwriter.ContractAddress, driverOwner, nativeminter.ContractAddress)
 	internalTxs = append(internalTxs, buildTx(calldata, netinit.ContractAddress))
 	// push genesis validators
 	for _, v := range validators {

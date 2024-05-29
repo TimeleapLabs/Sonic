@@ -47,6 +47,7 @@ type GenesisJson struct {
 type NetworkInitializerParams struct {
 	SealedEpoch      idx.Epoch
 	TotalSupply      *big.Int
+	MinSelfStake     *big.Int
 	SfcAddr          *common.Address
 	LibAddr          *common.Address
 	DriverAuthAddr   *common.Address
@@ -273,6 +274,7 @@ func ApplyGenesisJson(json *GenesisJson) (*genesisstore.Store, error) {
 		genesisTxs = append(genesisTxs, buildTx(netinitcall.InitializeAll(
 			json.NetworkInitializer.SealedEpoch,
 			json.NetworkInitializer.TotalSupply,
+			json.NetworkInitializer.MinSelfStake,
 			sfcAddr,
 			libAddr,
 			driverAuthAddr,
