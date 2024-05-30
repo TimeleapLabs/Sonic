@@ -26,6 +26,12 @@ var (
 		NetworkName: "test",
 	}
 
+	nizaMainnetHeader = genesis.Header{
+		GenesisID:   hash.HexToHash("0x92b2d656026e59cbbcf0acf9f20afc786b57bc50fc3c622a3265f9c1e0627a99"),
+		NetworkID:   0x4E49,
+		NetworkName: "Niza",
+	}
+
 	allowedGenesis = []GenesisTemplate{
 		{
 			Name:   "Mainnet-5577 with pruned MPT",
@@ -122,9 +128,9 @@ var (
 			Name:   "Mainnet-279701 with Carmen live and archive state",
 			Header: mainnetHeader,
 			Hashes: genesis.Hashes{
-				genesisstore.EpochsSection(0):  hash.HexToHash("0x6a685f5b446eb17cc69047ddd230c0ccc0c820d4ba05bfdd30aa6176b40618da"),
-				genesisstore.BlocksSection(0):  hash.HexToHash("0xdf6ed841b928fad8632b7e532f0b989d93e26b8332fe8429504822df6d44a642"),
-				genesisstore.FwsLiveSection(0): hash.HexToHash("0x702c987a8e799d7550db6a3fc9a571cbaeac7a00d7bb984a00374a27bd25d908"),
+				genesisstore.EpochsSection(0):     hash.HexToHash("0x6a685f5b446eb17cc69047ddd230c0ccc0c820d4ba05bfdd30aa6176b40618da"),
+				genesisstore.BlocksSection(0):     hash.HexToHash("0xdf6ed841b928fad8632b7e532f0b989d93e26b8332fe8429504822df6d44a642"),
+				genesisstore.FwsLiveSection(0):    hash.HexToHash("0x702c987a8e799d7550db6a3fc9a571cbaeac7a00d7bb984a00374a27bd25d908"),
 				genesisstore.FwsArchiveSection(0): hash.HexToHash("0xf445000720ef2969aa0fb4db6f5542452b5ea83fbf54dc1dcbe9202af0feafd8"),
 			},
 		},
@@ -249,6 +255,16 @@ var (
 				genesisstore.BlocksSection(1): hash.HexToHash("0x7d651ed0e0f3e92ffd89cb52112598db54afd8bf3050bc083ff0bfe1b98948fd"),
 				genesisstore.EvmSection(0):    hash.HexToHash("0x9227c80bf56e4af08dc32cb6043cc43672f2be8177d550ab34a7a9f57f4f104b"),
 				genesisstore.EvmSection(1):    hash.HexToHash("0x2376016f7ba13123244c6b56088a76e2e8bd5d5795fa92bad65f61488d12c236"),
+			},
+		},
+		{
+			Name:   "Niza Mainnet Genesis",
+			Header: nizaMainnetHeader,
+			Hashes: genesis.Hashes{
+				genesisstore.BlocksSection(0):     hash.HexToHash("0x98ddd0f51ff15abc36c32400da1d5ed5b99c7f029d531140ee76b6c007cbd494"),
+				genesisstore.FwsLiveSection(0):    hash.HexToHash("0x7f21190013416bf7108187b980ab09ca4aac1e7c484b9c79e2c862ed7e5cbc24"),
+				genesisstore.FwsArchiveSection(0): hash.HexToHash("0x8e12a34f2506a83c08664097596b0b68e304fb635c5fb3c78525a3f5cbda605a"),
+				genesisstore.EpochsSection(0):     hash.HexToHash("0x1d6d730eb035ef4cbdecbc3cd9355fcd78e6bb6008d85a1216935bec493a5133"),
 			},
 		},
 	}
