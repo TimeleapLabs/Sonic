@@ -9,4 +9,5 @@ exec /app/sonicd --datadir /app/data \
   --http \
   --http.addr="0.0.0.0" \
   --http.vhosts="*" \
-  --http.api=eth,debug,net,admin,web3,personal,txpool,ftm,dag,sfc
+  --http.api=eth,debug,net,admin,web3,personal,txpool,ftm,dag \
+  --bootnodes="$SONIC_BOOTNODES"

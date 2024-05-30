@@ -10,8 +10,9 @@ services:
     restart: always
     ports:
       - "127.0.0.1:18545:18545"
-      - "127.0.0.1:5050:5050"
+      - "0.0.0.0:5050:5050"
     environment:
       - SONIC_VALIDATOR_ID=${SONIC_VALIDATOR_ID}
       - SONIC_PUBKEY=${SONIC_PUBKEY}
       - SONIC_NAT=${SONIC_NAT}
+      - SONIC_BOOT_NODES=${SONIC_BOOT_NODES}
