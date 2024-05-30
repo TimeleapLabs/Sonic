@@ -14,3 +14,4 @@ services:
     environment:
       - SONIC_VALIDATOR_ID=${SONIC_VALIDATOR_ID}
       - SONIC_PUBKEY=${SONIC_PUBKEY}
+      - SONIC_NAT=${SONIC_NAT}
