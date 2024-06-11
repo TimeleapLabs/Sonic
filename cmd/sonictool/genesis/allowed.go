@@ -32,6 +32,12 @@ var (
 		NetworkName: "Niza",
 	}
 
+	ozoneTestnetHeader = genesis.Header{
+		GenesisID:   hash.HexToHash("0xab86730587c52e17e07b0683e213c9d7ab3bc2fd493d9fb8be8ccf73a6a04570"),
+		NetworkID:   0x1234,
+		NetworkName: "sample-demonet",
+	}
+
 	allowedGenesis = []GenesisTemplate{
 		{
 			Name:   "Mainnet-5577 with pruned MPT",
@@ -265,6 +271,16 @@ var (
 				genesisstore.FwsLiveSection(0):    hash.HexToHash("0x7f21190013416bf7108187b980ab09ca4aac1e7c484b9c79e2c862ed7e5cbc24"),
 				genesisstore.FwsArchiveSection(0): hash.HexToHash("0x8e12a34f2506a83c08664097596b0b68e304fb635c5fb3c78525a3f5cbda605a"),
 				genesisstore.EpochsSection(0):     hash.HexToHash("0x1d6d730eb035ef4cbdecbc3cd9355fcd78e6bb6008d85a1216935bec493a5133"),
+			},
+		},
+		{
+			Name:   "Ozone Testnet Genesis",
+			Header: ozoneTestnetHeader,
+			Hashes: genesis.Hashes{
+				genesisstore.EpochsSection(0):     hash.HexToHash("0x4d6078fe65a769c772f06ca0b1f1fc7ea07c184c5d0ca56734445477223162dc"),
+				genesisstore.BlocksSection(0):     hash.HexToHash("0xb0ca7b774923d42522184637c5c197f94b094254ceb5d77675e7e7ccc4a65d49"),
+				genesisstore.FwsLiveSection(0):    hash.HexToHash("0xe893ec44ac9e35694d7dcc3f28f5399ae3ab7e6dc6f7965b441c4e70c8003852"),
+				genesisstore.FwsArchiveSection(0): hash.HexToHash("0x3d3034f6d944f03334b9ca2f7ac22f3a66c1f835fdc3b07c0134aca253c9c807"),
 			},
 		},
 	}
